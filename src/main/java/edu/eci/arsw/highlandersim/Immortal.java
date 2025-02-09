@@ -5,66 +5,80 @@ import java.util.Random;
 
 public class Immortal extends Thread {
 
-    private ImmortalUpdateReportCallback updateCallback=null;
-    
+    private ImmortalUpdateReportCallback updateCallback = null;
+
     private int health;
-    
+
     private int defaultDamageValue;
 
     private final List<Immortal> immortalsPopulation;
 
     private final String name;
 
+    public boolean isAlive = true;
+
     private final Random r = new Random(System.currentTimeMillis());
+    private Object lock;
 
     public Immortal(String name, List<Immortal> immortalsPopulation, int health, int defaultDamageValue,
-            ImmortalUpdateReportCallback ucb) {
+            ImmortalUpdateReportCallback ucb, Object lock) {
         super(name);
-        this.updateCallback=ucb;
+        this.updateCallback = ucb;
         this.name = name;
         this.immortalsPopulation = immortalsPopulation;
         this.health = health;
-        this.defaultDamageValue=defaultDamageValue;
+        this.defaultDamageValue = defaultDamageValue;
+        this.lock = lock;
     }
 
     public void run() {
-        while (health > 0) {
-            synchronized(immortalsPopulation){
-                while(ControlFrame.isPaused){
+        while (health > 0 && ControlFrame.inmortalNumber > 1) {
+
+            synchronized (lock) {
+                while (ControlFrame.isPaused) {
                     try {
-                        immortalsPopulation.wait();
+                        lock.wait();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
                 }
             }
+
             Immortal im;
 
             int myIndex = immortalsPopulation.indexOf(this);
+            int nextFighterIndex;
 
-            int nextFighterIndex = r.nextInt(immortalsPopulation.size());
+            do {
+                nextFighterIndex = r.nextInt(immortalsPopulation.size());
 
-            //avoid self-fight
-            if (nextFighterIndex == myIndex) {
-                nextFighterIndex = ((nextFighterIndex + 1) % immortalsPopulation.size());
-            }
+                // avoid self-fight
+                if (nextFighterIndex == myIndex) {
+                    nextFighterIndex = ((nextFighterIndex + 1) % immortalsPopulation.size());
+                }
 
-            im = immortalsPopulation.get(nextFighterIndex);
+                im = immortalsPopulation.get(nextFighterIndex);
 
-            boolean actionCompleted = false;
-            while (!actionCompleted) {
                 Object firstLock = myIndex < nextFighterIndex ? this : im;
                 Object secondLock = myIndex < nextFighterIndex ? im : this;
-
+    
                 synchronized (firstLock) {
                     synchronized (secondLock) {
-                        this.fight(im);
-                        actionCompleted = true;
+                        if(im.isAlive){
+                            this.fight(im);
+                            break;
+                        }
                     }
                 }
-            }
+
+            } while (!im.isAlive && ControlFrame.inmortalNumber > 1);
+
+
 
         }
+        if (ControlFrame.inmortalNumber == 1 && this.isAlive) {
+            updateCallback.processReport("The winner is: " + this + "\n");
+        } 
 
     }
 
@@ -80,7 +94,12 @@ public class Immortal extends Thread {
     }
 
     public void changeHealth(int v) {
+        
         health = v;
+        if(v == 0){
+            isAlive = false;
+            ControlFrame.decreaseInmortalNumber();
+        }
     }
 
     public int getHealth() {

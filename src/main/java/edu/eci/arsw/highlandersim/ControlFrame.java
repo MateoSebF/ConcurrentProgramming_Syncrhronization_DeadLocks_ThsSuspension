@@ -30,12 +30,14 @@ public class ControlFrame extends JFrame {
     private JPanel contentPane;
 
     private List<Immortal> immortals;
+    private Object lock = new Object();
     public static boolean isPaused = false;  
 
     private JTextArea output;
     private JLabel statisticsLabel;
     private JScrollPane scrollPane;
     private JTextField numOfImmortals;
+    public static int inmortalNumber;
 
     /**
      * Launch the application.
@@ -162,16 +164,19 @@ public class ControlFrame extends JFrame {
     }
 
     public void pauseThread(){
-        synchronized(immortals){
+        synchronized(lock){
             isPaused = true;
         }
     }
 
     public void resumeThread(){
-        synchronized(immortals){
+        synchronized(lock){
             isPaused = false;
-            immortals.notifyAll();
+            lock.notifyAll();
         }
+    }
+    public static synchronized void decreaseInmortalNumber(){
+        inmortalNumber--;
     }
 
     public List<Immortal> setupInmortals() {
@@ -180,11 +185,12 @@ public class ControlFrame extends JFrame {
 
         try {
             int ni = Integer.parseInt(numOfImmortals.getText());
+            inmortalNumber = ni;
 
             List<Immortal> il = new LinkedList<Immortal>();
 
             for (int i = 0; i < ni; i++) {
-                Immortal i1 = new Immortal("im" + i, il, DEFAULT_IMMORTAL_HEALTH, DEFAULT_DAMAGE_VALUE, ucb);
+                Immortal i1 = new Immortal("im" + i, il, DEFAULT_IMMORTAL_HEALTH, DEFAULT_DAMAGE_VALUE, ucb, lock);
                 il.add(i1);
             }
             return il;
@@ -218,7 +224,6 @@ class TextAreaUpdateReportCallback implements ImmortalUpdateReportCallback {
                 bar.setValue(bar.getMaximum());
             }
         });
-
     }
 
 }
