@@ -102,6 +102,10 @@ public class ControlFrame extends JFrame {
                     for (Immortal im : immortals) {
                         sum += im.getHealth();
                     }
+                    try{
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e1) {}
+
                     resumeThread();
                 }
                 else{
