@@ -28,8 +28,16 @@ public class Immortal extends Thread {
     }
 
     public void run() {
-
-        while (true) {
+        while (health > 0) {
+            synchronized(immortalsPopulation){
+                while(ControlFrame.isPaused){
+                    try {
+                        immortalsPopulation.wait();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
             Immortal im;
 
             int myIndex = immortalsPopulation.indexOf(this);
@@ -56,7 +64,6 @@ public class Immortal extends Thread {
     }
 
     public void fight(Immortal i2) {
-
         if (i2.getHealth() > 0) {
             i2.changeHealth(i2.getHealth() - defaultDamageValue);
             this.health += defaultDamageValue;

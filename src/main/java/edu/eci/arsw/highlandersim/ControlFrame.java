@@ -30,6 +30,7 @@ public class ControlFrame extends JFrame {
     private JPanel contentPane;
 
     private List<Immortal> immortals;
+    public static boolean isPaused = false;  
 
     private JTextArea output;
     private JLabel statisticsLabel;
@@ -38,6 +39,8 @@ public class ControlFrame extends JFrame {
 
     /**
      * Launch the application.
+     * 
+     * 
      */
     public static void main(String[] args) {
         EventQueue.invokeLater(new Runnable() {
@@ -54,6 +57,8 @@ public class ControlFrame extends JFrame {
 
     /**
      * Create the frame.
+     * 
+     * 
      */
     public ControlFrame() {
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -89,17 +94,26 @@ public class ControlFrame extends JFrame {
             public void actionPerformed(ActionEvent e) {
 
                 /*
-				 * COMPLETAR
+                 * COMPLETAR
                  */
                 int sum = 0;
-                for (Immortal im : immortals) {
-                    sum += im.getHealth();
+                if (!isPaused){
+                    pauseThread();
+                    for (Immortal im : immortals) {
+                        sum += im.getHealth();
+                    }
+                    resumeThread();
                 }
-
-                statisticsLabel.setText("<html>"+immortals.toString()+"<br>Health sum:"+ sum);
+                else{
+                    for (Immortal im : immortals) {
+                        sum += im.getHealth();
+                    }
+                }
                 
-                
 
+                statisticsLabel.setText("<html>" + immortals.toString() + "<br>Health sum:" + sum);
+
+                
             }
         });
         toolBar.add(btnPauseAndCheck);
@@ -108,10 +122,7 @@ public class ControlFrame extends JFrame {
 
         btnResume.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-                /**
-                 * IMPLEMENTAR
-                 */
-
+                resumeThread();
             }
         });
 
@@ -126,6 +137,11 @@ public class ControlFrame extends JFrame {
         numOfImmortals.setColumns(10);
 
         JButton btnStop = new JButton("STOP");
+        btnStop.addActionListener(new ActionListener(){
+            public void actionPerformed(ActionEvent e) {
+                pauseThread();
+            }
+        });
         btnStop.setForeground(Color.RED);
         toolBar.add(btnStop);
 
@@ -135,24 +151,36 @@ public class ControlFrame extends JFrame {
         output = new JTextArea();
         output.setEditable(false);
         scrollPane.setViewportView(output);
-        
-        
+
         statisticsLabel = new JLabel("Immortals total health:");
         contentPane.add(statisticsLabel, BorderLayout.SOUTH);
 
     }
 
+    public void pauseThread(){
+        synchronized(immortals){
+            isPaused = true;
+        }
+    }
+
+    public void resumeThread(){
+        synchronized(immortals){
+            isPaused = false;
+            immortals.notifyAll();
+        }
+    }
+
     public List<Immortal> setupInmortals() {
 
-        ImmortalUpdateReportCallback ucb=new TextAreaUpdateReportCallback(output,scrollPane);
-        
+        ImmortalUpdateReportCallback ucb = new TextAreaUpdateReportCallback(output, scrollPane);
+
         try {
             int ni = Integer.parseInt(numOfImmortals.getText());
 
             List<Immortal> il = new LinkedList<Immortal>();
 
             for (int i = 0; i < ni; i++) {
-                Immortal i1 = new Immortal("im" + i, il, DEFAULT_IMMORTAL_HEALTH, DEFAULT_DAMAGE_VALUE,ucb);
+                Immortal i1 = new Immortal("im" + i, il, DEFAULT_IMMORTAL_HEALTH, DEFAULT_DAMAGE_VALUE, ucb);
                 il.add(i1);
             }
             return il;
@@ -165,29 +193,28 @@ public class ControlFrame extends JFrame {
 
 }
 
-class TextAreaUpdateReportCallback implements ImmortalUpdateReportCallback{
+class TextAreaUpdateReportCallback implements ImmortalUpdateReportCallback {
 
     JTextArea ta;
     JScrollPane jsp;
 
-    public TextAreaUpdateReportCallback(JTextArea ta,JScrollPane jsp) {
+    public TextAreaUpdateReportCallback(JTextArea ta, JScrollPane jsp) {
         this.ta = ta;
-        this.jsp=jsp;
-    }       
-    
+        this.jsp = jsp;
+    }
+
     @Override
     public void processReport(String report) {
         ta.append(report);
 
-        //move scrollbar to the bottom
+        // move scrollbar to the bottom
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 JScrollBar bar = jsp.getVerticalScrollBar();
                 bar.setValue(bar.getMaximum());
             }
-        }
-        );
+        });
 
     }
-    
+
 }
