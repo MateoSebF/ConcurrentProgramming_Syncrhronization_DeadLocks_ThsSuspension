@@ -20,9 +20,9 @@ public class Producer extends Thread {
 
     private int dataSeed = 0;
     private Random rand=null;
-    private final long stockLimit;
+    private final int stockLimit;
 
-    public Producer(Queue<Integer> queue,long stockLimit) {
+    public Producer(Queue<Integer> queue,int stockLimit) {
         this.queue = queue;
         rand = new Random(System.currentTimeMillis());
         this.stockLimit=stockLimit;
@@ -31,17 +31,30 @@ public class Producer extends Thread {
     @Override
     public void run() {
         while (true) {
-
             dataSeed = dataSeed + rand.nextInt(100);
             System.out.println("Producer added " + dataSeed);
-            queue.add(dataSeed);
-            
+            if(queue.size()<stockLimit) {
+                queue.add(dataSeed);
+                System.out.println(queue.size());
+                synchronized (queue){
+                    queue.notifyAll();
+                }
+            }
+            else{
+                System.out.println("La cola esta llena");
+                synchronized (queue){
+                    try{
+                        queue.wait();
+                    }
+                    catch(Exception ex){
+                    }
+                }
+            }
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException ex) {
                 Logger.getLogger(Producer.class.getName()).log(Level.SEVERE, null, ex);
             }
-
         }
     }
 }
