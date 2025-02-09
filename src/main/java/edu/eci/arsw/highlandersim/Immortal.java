@@ -55,7 +55,7 @@ public class Immortal extends Thread {
             while (!actionCompleted) {
                 Object firstLock = myIndex < nextFighterIndex ? this : im;
                 Object secondLock = myIndex < nextFighterIndex ? im : this;
-
+                
                 synchronized (firstLock) {
                     synchronized (secondLock) {
                         this.fight(im);
