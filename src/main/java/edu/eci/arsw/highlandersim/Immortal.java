@@ -5,10 +5,10 @@ import java.util.Random;
 
 public class Immortal extends Thread {
 
-    private ImmortalUpdateReportCallback updateCallback=null;
-    
+    private ImmortalUpdateReportCallback updateCallback = null;
+
     private int health;
-    
+
     private int defaultDamageValue;
 
     private final List<Immortal> immortalsPopulation;
@@ -17,20 +17,20 @@ public class Immortal extends Thread {
 
     private final Random r = new Random(System.currentTimeMillis());
 
-
-    public Immortal(String name, List<Immortal> immortalsPopulation, int health, int defaultDamageValue, ImmortalUpdateReportCallback ucb) {
+    public Immortal(String name, List<Immortal> immortalsPopulation, int health, int defaultDamageValue,
+            ImmortalUpdateReportCallback ucb) {
         super(name);
-        this.updateCallback=ucb;
+        this.updateCallback = ucb;
         this.name = name;
         this.immortalsPopulation = immortalsPopulation;
         this.health = health;
-        this.defaultDamageValue=defaultDamageValue;
+        this.defaultDamageValue = defaultDamageValue;
     }
 
     public void run() {
         while (health > 0) {
-            synchronized(immortalsPopulation){
-                while(ControlFrame.isPaused){
+            synchronized (immortalsPopulation) {
+                while (ControlFrame.isPaused) {
                     try {
                         immortalsPopulation.wait();
                     } catch (InterruptedException e) {
@@ -44,14 +44,25 @@ public class Immortal extends Thread {
 
             int nextFighterIndex = r.nextInt(immortalsPopulation.size());
 
-            //avoid self-fight
+            // avoid self-fight
             if (nextFighterIndex == myIndex) {
                 nextFighterIndex = ((nextFighterIndex + 1) % immortalsPopulation.size());
             }
 
             im = immortalsPopulation.get(nextFighterIndex);
 
-            this.fight(im);
+            boolean actionCompleted = false;
+            while (!actionCompleted) {
+                Object firstLock = myIndex < nextFighterIndex ? this : im;
+                Object secondLock = myIndex < nextFighterIndex ? im : this;
+
+                synchronized (firstLock) {
+                    synchronized (secondLock) {
+                        this.fight(im);
+                        actionCompleted = true;
+                    }
+                }
+            }
 
             try {
                 Thread.sleep(1);
@@ -67,7 +78,7 @@ public class Immortal extends Thread {
         if (i2.getHealth() > 0) {
             i2.changeHealth(i2.getHealth() - defaultDamageValue);
             this.health += defaultDamageValue;
-            updateCallback.processReport("Fight: " + this + " vs " + i2+"\n");
+            updateCallback.processReport("Fight: " + this + " vs " + i2 + "\n");
         } else {
             updateCallback.processReport(this + " says:" + i2 + " is already dead!\n");
         }
