@@ -64,12 +64,6 @@ public class Immortal extends Thread {
                 }
             }
 
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
         }
 
     }
