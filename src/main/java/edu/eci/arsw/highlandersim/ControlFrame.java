@@ -4,6 +4,7 @@ import java.awt.BorderLayout;
 import java.awt.EventQueue;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
@@ -24,7 +25,7 @@ import javax.swing.JScrollBar;
 
 public class ControlFrame extends JFrame {
 
-    private static final int DEFAULT_IMMORTAL_HEALTH = 100;
+    private static final int DEFAULT_IMMORTAL_HEALTH = 20000000;
     private static final int DEFAULT_DAMAGE_VALUE = 10;
 
     private JPanel contentPane;
@@ -37,7 +38,7 @@ public class ControlFrame extends JFrame {
     private JLabel statisticsLabel;
     private JScrollPane scrollPane;
     private JTextField numOfImmortals;
-    public static int inmortalNumber;
+    private CountDownLatch countDownLatch;
 
     /**
      * Launch the application.
@@ -94,20 +95,12 @@ public class ControlFrame extends JFrame {
         JButton btnPauseAndCheck = new JButton("Pause and check");
         btnPauseAndCheck.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
-
-                /*
-                 * COMPLETAR
-                 */
                 int sum = 0;
                 if (!isPaused){
                     pauseThread();
                     for (Immortal im : immortals) {
                         sum += im.getHealth();
                     }
-                    try{
-                        Thread.sleep(5000);
-                    } catch (InterruptedException e1) {}
-
                     resumeThread();
                 }
                 else{
@@ -175,9 +168,6 @@ public class ControlFrame extends JFrame {
             lock.notifyAll();
         }
     }
-    public static synchronized void decreaseInmortalNumber(){
-        inmortalNumber--;
-    }
 
     public List<Immortal> setupInmortals() {
 
@@ -185,12 +175,12 @@ public class ControlFrame extends JFrame {
 
         try {
             int ni = Integer.parseInt(numOfImmortals.getText());
-            inmortalNumber = ni;
+            countDownLatch = new CountDownLatch(ni);
 
             List<Immortal> il = new LinkedList<Immortal>();
 
             for (int i = 0; i < ni; i++) {
-                Immortal i1 = new Immortal("im" + i, il, DEFAULT_IMMORTAL_HEALTH, DEFAULT_DAMAGE_VALUE, ucb, lock);
+                Immortal i1 = new Immortal("im" + i, il, DEFAULT_IMMORTAL_HEALTH, DEFAULT_DAMAGE_VALUE, ucb, lock, countDownLatch);
                 il.add(i1);
             }
             return il;
