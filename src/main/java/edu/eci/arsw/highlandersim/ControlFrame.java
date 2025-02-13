@@ -25,7 +25,7 @@ import javax.swing.JScrollBar;
 
 public class ControlFrame extends JFrame {
 
-    private static final int DEFAULT_IMMORTAL_HEALTH = 20000000;
+    private static final int DEFAULT_IMMORTAL_HEALTH = 100;
     private static final int DEFAULT_DAMAGE_VALUE = 10;
 
     private JPanel contentPane;
