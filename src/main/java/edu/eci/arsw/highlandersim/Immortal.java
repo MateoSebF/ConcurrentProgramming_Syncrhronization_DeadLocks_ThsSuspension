@@ -2,38 +2,34 @@ package edu.eci.arsw.highlandersim;
 
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class Immortal extends Thread {
 
     private ImmortalUpdateReportCallback updateCallback = null;
-
-    private int health;
-
-    private int defaultDamageValue;
-
+    private final AtomicInteger health;
+    private final int defaultDamageValue;
+    private final Object lock;
+    private final CountDownLatch countDownLatch;
     private final List<Immortal> immortalsPopulation;
-
     private final String name;
-
-    public boolean isAlive = true;
-
     private final Random r = new Random(System.currentTimeMillis());
-    private Object lock;
 
     public Immortal(String name, List<Immortal> immortalsPopulation, int health, int defaultDamageValue,
-            ImmortalUpdateReportCallback ucb, Object lock) {
+            ImmortalUpdateReportCallback ucb, Object lock, CountDownLatch countDownLatch) {
         super(name);
         this.updateCallback = ucb;
         this.name = name;
         this.immortalsPopulation = immortalsPopulation;
-        this.health = health;
+        this.health = new AtomicInteger(health);
         this.defaultDamageValue = defaultDamageValue;
         this.lock = lock;
+        this.countDownLatch = countDownLatch;
     }
 
     public void run() {
-        while (health > 0 && ControlFrame.inmortalNumber > 1) {
-
+        while (getHealth() > 0 && countDownLatch.getCount() > 1) {
             synchronized (lock) {
                 while (ControlFrame.isPaused) {
                     try {
@@ -43,73 +39,71 @@ public class Immortal extends Thread {
                     }
                 }
             }
-
             Immortal im;
-
             int myIndex = immortalsPopulation.indexOf(this);
             int nextFighterIndex;
-
-            do {
+            boolean actionPerformed = false;
+            while (!actionPerformed && countDownLatch.getCount() > 1) {
                 nextFighterIndex = r.nextInt(immortalsPopulation.size());
 
                 // avoid self-fight
                 if (nextFighterIndex == myIndex) {
                     nextFighterIndex = ((nextFighterIndex + 1) % immortalsPopulation.size());
                 }
-
                 im = immortalsPopulation.get(nextFighterIndex);
 
                 Object firstLock = myIndex < nextFighterIndex ? this : im;
                 Object secondLock = myIndex < nextFighterIndex ? im : this;
-    
+
                 synchronized (firstLock) {
                     synchronized (secondLock) {
-                        if(im.isAlive){
-                            this.fight(im);
-                            break;
+                        if (im.getHealth() <= 0)
+                            continue;
+                        if (getHealth() <= 0) {
+                            actionPerformed = true;
+                            continue;
                         }
+                        this.fight(im);
+                        actionPerformed = true;
                     }
                 }
-
-            } while (!im.isAlive && ControlFrame.inmortalNumber > 1);
-
-
-
+            }
         }
-        if (ControlFrame.inmortalNumber == 1 && this.isAlive) {
+        if (countDownLatch.getCount() == 1 && getHealth() > 0) {
             updateCallback.processReport("The winner is: " + this + "\n");
-        } 
+        } else {
+            countDownLatch.countDown();
+        }
 
     }
 
     public void fight(Immortal i2) {
-        if (i2.getHealth() > 0) {
-            i2.changeHealth(i2.getHealth() - defaultDamageValue);
-            this.health += defaultDamageValue;
+        int myHealth = getHealth();
+        int i2Health = i2.getHealth();
+        if (i2Health > 0) {
+            i2.setHealth(i2Health - defaultDamageValue);
+            setHealth(myHealth + defaultDamageValue);
             updateCallback.processReport("Fight: " + this + " vs " + i2 + "\n");
+            if (i2.getHealth() == 0) {
+                updateCallback
+                        .processReport(this + " kill " + i2 + " and there is " + countDownLatch.getCount() + " left\n");
+            }
         } else {
             updateCallback.processReport(this + " says:" + i2 + " is already dead!\n");
         }
-
     }
 
-    public void changeHealth(int v) {
-        
-        health = v;
-        if(v == 0){
-            isAlive = false;
-            ControlFrame.decreaseInmortalNumber();
-        }
+    public int getHealth(){
+        return health.get();
     }
 
-    public int getHealth() {
-        return health;
+    public void setHealth(int newHealth){
+        health.set(newHealth);
     }
 
     @Override
     public String toString() {
-
-        return name + "[" + health + "]";
+        return name + "[" + getHealth() + "]";
     }
 
 }
